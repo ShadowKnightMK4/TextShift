@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TextLineFixer": {
+      "commandName": "Project",
+      "commandLineArgs": "-SOURCE \"H:\\Users\\Thoma\\Desktop\\show_slash_r_slash_n.exw\" -TARGET \"H:\\Users\\Thoma\\Desktop\\output.txt\"  -IN:ANSI  -OUT:ANSI -F  -LMW "
+    }
+  }
+}
