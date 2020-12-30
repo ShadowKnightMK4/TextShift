@@ -2,7 +2,7 @@
 This explores modifying text based on regular expressions and also some conversion between encodings.
 
 
-The inspirationffor this is me wanting to have a way to fix mismatched lines. It grew from there. Run the app with /? To see the full command line. 
+The inspiration for this is me wanting to have a way to fix mismatched lines. It grew from there. Run the app with /? To see the full command line. 
 
 
   Current Settings include what to do with new line chars of 10, 13 aka '\r\n' for Windows C/C++/C# users. 
