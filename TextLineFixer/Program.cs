@@ -4,153 +4,89 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using TextShift;
 namespace TextLineFixer
 {
 
-    class ReplacemengRegEx : Regex
-    { 
-        public ReplacemengRegEx(string pattern, RegexOptions Options, string ReplaceWith):base(pattern, Options)
-        {
-            this.ReplaceString = ReplaceWith;
-        }
+   
+    
 
-        public string ReplaceString { get; set; }
-
-        public string FancyName { get; set; }
-    }
-
-    class TextSource
-    {
-
-        public enum LineHandling
-        {
-            NoFix = 0,
-            /// <summary>
-            /// inst
-            /// </summary>
-            Fix = 1,
-
-        }
-
-        List<Regex> Passes = new List<Regex>();
-
-        public void ForceString(string UseThis)
-        {
-            Source = null;
-            DebubString = UseThis;
-        }
-        public TextSource(string Name)
-        {
-            Source = File.Open(Name, FileMode.Open);
-        }
-
-        public TextSource()
-        {
-            Source = null;
-        }
-        public TextSource(Stream UseThis)
-        {
-            Source = UseThis;
-        }
-        ~TextSource()
-        {
-            Source.Dispose();
-        }
-
-        private Stream Source;
-        private string DebubString;
-
-        /// <summary>
-        /// bytes that have \r or \n get replaced with this
-        /// </summary>
-        public string PreferredLineEnd { get; set; } = "\r\n";
-
-        /// <summary>
-        /// If Null, 
-        /// </summary>
-        public Encoding TargetOutputFormat { get; set; } = Encoding.Default;
-
-        bool VerboseOutput = true;
-
-        /// <summary>
-        /// Add passes to equalize partial lines.
-        /// </summary>
-        /// <param name="NewLine"></param>
-        public void AddLineEndHandling(string NewLine)
-        {
-            ReplacemengRegEx Pass1 = new ReplacemengRegEx("\r[^\n]", RegexOptions.IgnoreCase, NewLine);
-            ReplacemengRegEx Pass2 = new ReplacemengRegEx("[^\r]\n", RegexOptions.IgnoreCase, NewLine);
-            Pass1.FancyName = "Single \\r to \\r\\n Replacer";
-            Pass2.FancyName = "Single \\n to \\r\\n Replacement";
-            Passes.Add(Pass1);
-            Passes.Add(Pass2);
-        }
-
-        
-        public bool DisplayFixedLines { get; set; } = true;
-        private void Write(string input, Stream target, Encoding Format)
-        {
-            byte[] Data = Format.GetBytes(input);
-
-            target.Write(Data, 0, Data.Length - 1);
-        }
-
-        private void Write(List<int> Input,Stream Target, Encoding Format)
-        {
-            Write(Input.ToString(), Target, Format);
-        }
-
-
-    }
-
+    /// <summary>
+    /// source and target encoding
+    /// </summary>
     class Config
     {
+        /// <summary>
+        /// Specifies the encoding that will be read from the source
+        /// </summary>
         public Encoding Source = Encoding.Default;
+        /// <summary>
+        /// Specifies the encoding we emit to the target location
+        /// </summary>
         public Encoding Target = Encoding.Default;
         
     }
     class Program
     {
-        static TextSource Source;
-        static Stream Target=null;
+        
         static Config Config = new Config();
 
 
-        const string SOURCE = "SOURCE";
-        const string TARGET = "TARGET";
 
-        const string SPECIAL_CONSOLE_TARGET = "CON";
+        /// <summary>
+        /// This is the class that transforms the text. The console app is what converts between the encodings.
+        /// </summary>
+        static TextTransformer Megatron = new TextTransformer();
 
-        static TextShift.TextTransformer Megatron = new TextShift.TextTransformer();
+        /// <summary>
+        /// In the event of no arguments being passed, we read the built in Usage.txt file and show that to the user.
+        /// </summary>
+        /// <remarks>Usage.txt is assumed to be ANSCII 8-bit plain text.</remarks>
         static void Usage()
         {
-            Console.Write(@"
-                -In:Format
- 
-                -Out:Format
-
-                    Specific the input and output file's encoding.  Internally the format goes from InFormat to Unicode String to Output format.
-
-
-                -Source:
-");
-            
+            var UsageTextData = Assembly.GetExecutingAssembly().GetManifestResourceStream("TextShift.Usage.txt");
+            byte[] Data = new byte[UsageTextData.Length];
+            UsageTextData.Read(Data, 0, Data.Length - 1);
+            Console.Write(Encoding.ASCII.GetString(Data));
         }
 
 
+        /// <summary>
+        /// holds the location of the source
+        /// </summary>
         static string SourceLocation =null;
+        /// <summary>
+        /// holds the location of the target
+        /// </summary>
         static string TargetLocation = null;
 
+        /// <summary>
+        /// the open stream to the source
+        /// </summary>
         static Stream SourceStream;
+        /// <summary>
+        /// the open strema to the target
+        /// </summary>
         static Stream TargetStream;
 
+        /// <summary>
+        /// if true, replacing the target is ok.
+        /// </summary>
         static bool OkToOverwrite = false;
+
+        /// <summary>
+        /// handle the arguments
+        /// </summary>
+        /// <param name="args"></param>
+        /// <exception cref="ArgumentNullException"> is thrown if args is null or its length is 0.  Caller is expected to show usage.txt if that happens.</exception>
+        /// <exception cref="ArgumentException">is thrown if a malformed argument is passed. Caller is expected to exit</exception>
         static void HandleArgs(string[] args)
         {
-            if (args.Length == 0)
+            if ( ( args == null) || (args.Length < 3) )
             {
                 throw new ArgumentNullException();
             }
+
             for (int step = 0; step < args.Length; step++)
             {
                 if (args[step].Length > 0)
@@ -227,18 +163,52 @@ namespace TextLineFixer
                                     OkToOverwrite = true;
                                 }
                                 break;
+                            case "IN:ASCII":
                             case "IN:ANSI":
                                 Config.Source = Encoding.ASCII;
-                                    break;
+                                break;
+                            case "IN:BigEndianUnicode":
+                                Config.Source = Encoding.BigEndianUnicode;
+                                break;
+                            case "IN:UTF7":
+                                Config.Source = Encoding.UTF7;
+                                break;
+                            case "IN:UTF8":
+                                Config.Source = Encoding.UTF8;
+                                break;
+                            case "IN:UTF32":
+                                Config.Source = Encoding.UTF32;
+                                break;
+                            case "IN:LilEndianUnicode":
                             case "IN:UNICODE":
                                 Config.Source = Encoding.Unicode;
                                 break;
+
+                            case "OUT:ASCII":
                             case "OUT:ANSI":
-                                Config.Target = Encoding.ASCII;
+                                Config.Target= Encoding.ASCII;
                                 break;
+                            case "OUT:BigEndianUnicode":
+                                Config.Target = Encoding.BigEndianUnicode;
+                                break;
+                            case "OUT:UTF7":
+                                Config.Target = Encoding.UTF7;
+                                break;
+                            case "OUT:UTF8":
+                                Config.Target = Encoding.UTF8;
+                                break;
+                            case "OUT:UTF32":
+                                Config.Target = Encoding.UTF32;
+                                break;
+                            case "OUT:LilEndianUnicode":
                             case "OUT:UNICODE":
                                 Config.Target = Encoding.Unicode;
                                 break;
+                              case "?":
+                            case "HELP":
+                                // this triggers the usage file being displayed.
+                                throw new ArgumentNullException();
+                                
                             default:
                                 {
                                     throw new ArgumentException("Unknown argument: " + args[step]);
@@ -269,6 +239,8 @@ namespace TextLineFixer
             {
                 // in this case an exepction means invalid argument.
                 Console.WriteLine("Error: Unexpected or invalid arg. {0}", e.Message);
+
+                return;
             }
 
 
@@ -318,13 +290,13 @@ namespace TextLineFixer
                     {
                         if (OkToOverwrite == false)
                         {
-                            Console.WriteLine("Error: Target {0} already exists. Won't overwrite this without specifying the -FORCE command");
+                            Console.WriteLine("Error: Target {0} already exists. Won't overwrite this without specifying the -FORCE command", TargetLocation);
                             SourceStream.Close();
                             return;
                         }
                         else
                         {
-                            Console.WriteLine("Warning: Target {0} exists and 'FORCE' mode is specified. This will overwrite the target");
+                            Console.WriteLine("Warning: Target {0} exists and 'FORCE' mode is specified. This will overwrite the target", TargetLocation);
                         }
                     }
 
@@ -360,7 +332,7 @@ namespace TextLineFixer
             while (true)
             {
                 int o = 1;
-                int stopspace;
+                
                 if (SourceStream.ReadAsync(SourceBytes, 0, (int)SourceStream.Length).IsCompletedSuccessfully)
                 {
                     Console.WriteLine("Done.");
@@ -392,7 +364,7 @@ namespace TextLineFixer
 
                 }
 
-                o++;
+                
                 
 
             }

@@ -173,14 +173,14 @@ namespace TextShift
         /// </summary>
         private void AddSpaceFix()
         {
-            ReplaceRegEx Pass1 = new ReplaceRegEx("\\s{2,}", RegexOptions.IgnoreCase, " ");
+            ReplaceRegEx Pass1 = new ReplaceRegEx(" {2,}", RegexOptions.IgnoreCase, " ");
             Passes.Add(Pass1);
             Pass1.ReplaceHow = ReplaceRegEx.ReplaceType.LengthMatch;
         }
 
 
         /// <summary>
-        /// This won't work in .net Core
+        /// This won't work in .net Core but is a feature I want to implement.
         /// </summary>
         /// <param name="Target"></param>
         public void ExportCompiledAssembly(string Target)
@@ -191,7 +191,7 @@ namespace TextShift
 
 
         /// <summary>
-        /// Apply this <see cref="TextTransformer"/>'s settting to this string and return the result
+        /// Apply this <see cref="TextTransformer"/>'s setting to this string and return the result
         /// </summary>
         /// <param name="target"></param>
         /// <returns>return the string after applying the settings</returns>
