@@ -1,0 +1,6 @@
+﻿The liscense for this is modifed from the MIT template liscense. I wish peuple to be able to use and combine
+the sofware as they wish, provided credit is received as a source from this as long as the final result is not
+passed off as the original 'TextShift' and the software it is combined with stays free.
+
+There's a note in the liscense that keeps the door open should sometime want to combine this into something they 
+want to sell.  This means a seperate agreement. 

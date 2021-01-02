@@ -36,7 +36,7 @@ namespace TextShift
             /// <summary>
             /// No special line handling
             /// </summary>
-            None  = 0,
+            None = 0,
             /// <summary>
             /// Lone '\r' and '\n' will be replaced with '\r\n'
             /// </summary>
@@ -55,7 +55,10 @@ namespace TextShift
 
 
         }
-
+        /// <summary>
+        /// instances of '\r' and '\n' are backtracked to lit \\r \\n
+        /// </summary>
+        public bool ResultsModeNewLineEscape = true;
         /// <summary>
         /// Controls what to do with line endings of '\r', '\n' and '\r\n'
         /// </summary>
@@ -65,9 +68,9 @@ namespace TextShift
         /// Controls what to do with whitespaces that aren't line ending related
         /// </summary>
         public SpaceStyle SpacePreference = SpaceStyle.ForceSingle;
-        
 
-        
+
+
         #endregion
 
         /// <summary>
@@ -75,7 +78,7 @@ namespace TextShift
         /// </summary>
         private class ReplaceRegEx : Regex
         {
-            public ReplaceRegEx(string Pattern, RegexOptions Options, string ReplaceStr):base(Pattern, Options)
+            public ReplaceRegEx(string Pattern, RegexOptions Options, string ReplaceStr) : base(Pattern, Options)
             {
                 ReplaceWith = ReplaceStr;
                 ReplaceHow = ReplaceType.Fixed;
@@ -83,7 +86,7 @@ namespace TextShift
 
             public override string ToString()
             {
-                return   base.ToString();
+                return base.ToString();
             }
 
             public enum ReplaceType
@@ -91,15 +94,17 @@ namespace TextShift
                 /// <summary>
                 /// Default. Any match gets the Replacement string regardles.
                 /// </summary>
-              Fixed = 0,
-              /// <summary>
-              /// The matched part is sliced out and the replacement string is repeated and instereted.
-              /// </summary>
+                Fixed = 0,
+                /// <summary>
+                /// The matched part is sliced out and the replacement string is repeated and instereted.
+                /// </summary>
 
-              LengthMatch = 1
+                LengthMatch = 1
             }
             public ReplaceType ReplaceHow;
             public string ReplaceWith;
+
+            
         }
 
 
@@ -146,7 +151,7 @@ namespace TextShift
         /// add passes to transform line inding to '\n'
         /// </summary>
         /// <param name="ReplaceLine"></param>
-        private void AddNewLineUnixFix(string ReplaceLine="\n")
+        private void AddNewLineUnixFix(string ReplaceLine = "\n")
         {
             ReplaceRegEx Pass1 = new ReplaceRegEx("\r", RegexOptions.IgnoreCase, ReplaceLine);
             ReplaceRegEx Pass2 = new ReplaceRegEx("\r\n", RegexOptions.IgnoreCase, ReplaceLine);
@@ -157,9 +162,9 @@ namespace TextShift
         /// <summary>
         /// add regex to the Pass list to fix solo \r and \n for windows
         /// </summary>
-        private void AddNewLineWindowsFix(string ReplaceLine="\r\n")
+        private void AddNewLineWindowsFix(string ReplaceLine = "\r\n")
         {
-            ReplaceRegEx Pass1 = new ReplaceRegEx("\r[^\n]", RegexOptions.IgnoreCase , ReplaceLine);
+            ReplaceRegEx Pass1 = new ReplaceRegEx("\r[^\n]", RegexOptions.IgnoreCase, ReplaceLine);
             ReplaceRegEx Pass2 = new ReplaceRegEx("[^\r]\n", RegexOptions.IgnoreCase, ReplaceLine);
             ChangedLast = true;
             Passes.Add(Pass2);
@@ -190,6 +195,55 @@ namespace TextShift
         #endregion
 
 
+
+        /// <summary>
+        /// return a string containing information regarding how the passes would effect the passed string
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public string GetHits(string target)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            if ((ChangedLast) || (Passes.Count == 0 ))
+            {
+                ConvertConfigToSetting();
+
+                ChangedLast = false;
+            }
+            foreach (ReplaceRegEx pass in Passes)
+            {
+                MatchCollection Matches = pass.Matches(target);
+
+                foreach (Match M in Matches)
+                {
+                    ret.AppendFormat("Matched {0} at position char #{1} with val {2}. \r\n\r\n", new object[] { M.Value, M.Index, pass.ReplaceWith });
+                }
+            }
+
+            if (ResultsModeNewLineEscape)
+            {
+                return Regex.Replace(ret.ToString(), "(\r|\n)", p => { 
+                if (p.Value.Equals("\r"))
+                    {
+                        return "\\r\r";
+                    }
+                if (p.Value.Equals("\n"))
+                    {
+                        return "\\n\n";
+                    }
+                    throw new NotSupportedException("Regex c++ \\r\\n fancy filter has busted match. ");
+                        });
+
+            } 
+
+            
+
+            
+
+            return ret.ToString();
+
+        }
         /// <summary>
         /// Apply this <see cref="TextTransformer"/>'s setting to this string and return the result
         /// </summary>
@@ -197,10 +251,10 @@ namespace TextShift
         /// <returns>return the string after applying the settings</returns>
         public string Apply(string target)
         {
-            if ( (ChangedLast) || (Passes.Count == 0))
+            if ((ChangedLast) || (Passes.Count == 0))
             {
                 ConvertConfigToSetting();
-                
+
                 ChangedLast = false;
             }
 
@@ -247,4 +301,8 @@ namespace TextShift
 
 
     }
+
+
+
+
 }

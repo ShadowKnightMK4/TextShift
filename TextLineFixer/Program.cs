@@ -24,6 +24,16 @@ namespace TextLineFixer
         /// Specifies the encoding we emit to the target location
         /// </summary>
         public Encoding Target = Encoding.Default;
+
+       public enum ProcessMode
+        {
+            ProcessingMode = 1,
+            ResultsMode = 2,
+            AppendOutput = 4,
+            ReplaceOutput=8
+        }
+
+        public ProcessMode Mode = ProcessMode.ProcessingMode;
         
     }
     class Program
@@ -183,7 +193,14 @@ namespace TextLineFixer
                             case "IN:UNICODE":
                                 Config.Source = Encoding.Unicode;
                                 break;
-
+                            case "MODE:VIEW":
+                                Config.Mode |= Config.ProcessMode.ResultsMode;
+                                Config.Mode -= Config.ProcessMode.ProcessingMode;
+                                break;
+                            case "MODE:CHANGE":
+                                Config.Mode |= Config.ProcessMode.ResultsMode;
+                                Config.Mode -= Config.ProcessMode.ProcessingMode;
+                                break;
                             case "OUT:ASCII":
                             case "OUT:ANSI":
                                 Config.Target= Encoding.ASCII;
@@ -302,7 +319,7 @@ namespace TextLineFixer
 
                     try
                     {
-                        TargetStream = File.OpenWrite(TargetLocation);
+                        TargetStream = File.Open(TargetLocation, FileMode.OpenOrCreate);
                     }
                     catch (UnauthorizedAccessException)
                     {
@@ -373,12 +390,23 @@ namespace TextLineFixer
 
             SourceString = Config.Source.GetString(SourceBytes);
 
-            ProcessedString = Megatron.Apply(SourceString);
 
+            if (Config.Mode.HasFlag(Config.ProcessMode.ProcessingMode))
+            {
+                ProcessedString = Megatron.Apply(SourceString);
+
+            }
+            else
+            {
+                ProcessedString = Megatron.GetHits(SourceString);
+            }
 
             TargetBytes = Config.Target.GetBytes(ProcessedString);
-            TargetStream.Write(TargetBytes, 0, TargetBytes.Length-1);
-            TargetStream.Flush();
+            if (TargetBytes.Length != 0)
+            {
+                TargetStream.Write(TargetBytes, 0, TargetBytes.Length - 1);
+                TargetStream.Flush();
+            }
             Console.ReadKey();
         }
     }
