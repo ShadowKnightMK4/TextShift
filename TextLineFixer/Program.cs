@@ -30,7 +30,8 @@ namespace TextLineFixer
             ProcessingMode = 1,
             ResultsMode = 2,
             AppendOutput = 4,
-            ReplaceOutput=8
+            ReplaceOutput=8,
+            ExportAsBytes = 16
         }
 
         public ProcessMode Mode = ProcessMode.ProcessingMode;
@@ -96,7 +97,7 @@ namespace TextLineFixer
             {
                 throw new ArgumentNullException();
             }
-
+            
             for (int step = 0; step < args.Length; step++)
             {
                 if (args[step].Length > 0)
@@ -225,7 +226,10 @@ namespace TextLineFixer
                             case "HELP":
                                 // this triggers the usage file being displayed.
                                 throw new ArgumentNullException();
-                                
+                            case "MODE:BYTELIST":
+                            case "MBL":
+                                Config.Mode |= Config.ProcessMode.ExportAsBytes;
+                                break;
                             default:
                                 {
                                     throw new ArgumentException("Unknown argument: " + args[step]);
@@ -340,49 +344,31 @@ namespace TextLineFixer
             string SourceString;
             string ProcessedString;
 
-            const string AsyncMessage = "Reading Source. One Momement";
-            const string Dot1 = "  .  ";
-            const string Dot2 = Dot1 + Dot1;
-            const string Dot3 = Dot2 + Dot1;
+            const string AsyncMessage = "Reading Source. {0} out of {1} KB.   {2}%    ";
             Console.WriteLine();
             Console.CursorVisible = false;
             while (true)
             {
-                int o = 1;
-                
-                if (SourceStream.ReadAsync(SourceBytes, 0, (int)SourceStream.Length).IsCompletedSuccessfully)
+
+                var TaskStatus = SourceStream.ReadAsync(SourceBytes, 0, (int)SourceStream.Length);
+
+                if (SourceStream.Length != 0)
                 {
-                    Console.WriteLine("Done.");
+                    Console.Write(string.Format(AsyncMessage, TaskStatus.Result, SourceStream.Length, ((float)((float)TaskStatus.Result/(float)SourceStream.Length)) *100 ));
+                }
+
+                if (TaskStatus.IsCompleted)
+                {
+                    Console.WriteLine("\r\nDone");
                     break;
                 }
-                
-                Console.Write(AsyncMessage);
-
+                if (TaskStatus.IsFaulted)
+                {
+                    Console.WriteLine("There was an error handlings this");
+                    return;
+                }
                 Console.SetCursorPosition(AsyncMessage.Length, Console.CursorTop);
-                for (int step = 0; step < o; step++)
-                {
-                    Console.Write(" ");
-                }
-                switch (o)
-                {
-                    case 1:
-                        Console.Write(Dot1);
-                        break;
-                    case 2:
-                        Console.Write(Dot2);
-                        break;
-                    case 3:
-                        Console.Write(Dot3);
-                        break;
-                    default:
-                        o = 1;
-                        Console.Write(Dot1);
-                        break;
 
-                }
-
-                
-                
 
             }
             Console.CursorVisible = true;
@@ -390,15 +376,46 @@ namespace TextLineFixer
 
             SourceString = Config.Source.GetString(SourceBytes);
 
-
-            if (Config.Mode.HasFlag(Config.ProcessMode.ProcessingMode))
+            if (Config.Mode.HasFlag( Config.ProcessMode.ProcessingMode))
             {
                 ProcessedString = Megatron.Apply(SourceString);
-
             }
             else
             {
-                ProcessedString = Megatron.GetHits(SourceString);
+                if (Config.Mode.HasFlag(Config.ProcessMode.ReplaceOutput))
+                {
+                    ProcessedString = Megatron.GetHits(SourceString);
+                }
+                else
+                {
+                    ProcessedString = string.Empty;
+                }
+
+            }
+
+            if (Config.Mode.HasFlag(Config.ProcessMode.ExportAsBytes))
+            {
+                StringBuilder ret = new StringBuilder();
+                ret.Append("{");
+                for (int step =0; step < ProcessedString.Length;step++)
+                {
+                    if (step+1 != ProcessedString.Length)
+                    {
+                        ret.AppendFormat("{0}, ", ((int)ProcessedString[step]).ToString());
+                    }
+                    else
+                    {
+                        ret.AppendFormat("{0}", ProcessedString[step]);
+                    }
+
+                    if ( (step % 8) == 0)
+                    {
+                        ret.Append("\r\n");
+                    }
+
+                }
+                ret.Append("}");
+                ProcessedString = ret.ToString();
             }
 
             TargetBytes = Config.Target.GetBytes(ProcessedString);

@@ -2,7 +2,7 @@
   "profiles": {
     "TextLineFixer": {
       "commandName": "Project",
-      "commandLineArgs": "-SOURCE \"H:\\Users\\Thoma\\Desktop\\output.cpp\"  -TARGET \"H:\\Users\\Thoma\\Desktop\\process.cpp\" -LMW "
+      "commandLineArgs": "-SOURCE \"H:\\Users\\Thoma\\Desktop\\output.cpp\"  -TARGET \"H:\\Users\\Thoma\\Desktop\\process.cpp\" -LMW -FORCE -TARGET:CON"
     }
   }
 }

@@ -96,7 +96,7 @@ namespace TextShift
                 /// </summary>
                 Fixed = 0,
                 /// <summary>
-                /// The matched part is sliced out and the replacement string is repeated and instereted.
+                /// The matched part is sliced out and the replacement string is repeated until of equal length to the replaced string.
                 /// </summary>
 
                 LengthMatch = 1
@@ -174,7 +174,7 @@ namespace TextShift
 
 
         /// <summary>
-        /// 
+        /// Add the pass that fixes oddbal (space chars > 2 in length)
         /// </summary>
         private void AddSpaceFix()
         {
@@ -183,6 +183,16 @@ namespace TextShift
             Pass1.ReplaceHow = ReplaceRegEx.ReplaceType.LengthMatch;
         }
 
+
+        /// <summary>
+        /// add the pass that discards chars not within a range.
+        /// </summary>
+        /// <param name="low"></param>
+        /// <param name="high"></param>
+        private void AddDiscardPass(char low, char high)
+        {
+            ReplaceRegEx Pass1 = new ReplaceRegEx(string.Format("[{0}-{1}]", low, high), RegexOptions.IgnoreCase, string.Empty);
+        }
 
         /// <summary>
         /// This won't work in .net Core but is a feature I want to implement.

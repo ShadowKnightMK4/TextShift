@@ -78,6 +78,11 @@ This says that the target should be encoded as 16-bit Unicode
 
 
 
+-RANGE [0-255]
+This tells TextShift to quietly discard charactes outside of this range.
+
+-RANGE [0]
+This tells TextShift to discard chars of this value
 
 
 
