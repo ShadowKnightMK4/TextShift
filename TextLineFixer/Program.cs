@@ -27,16 +27,44 @@ namespace TextLineFixer
 
        public enum ProcessMode
         {
+            /// <summary>
+            /// 
+            /// </summary>
             ProcessingMode = 1,
+            /// <summary>
+            /// 
+            /// </summary>
             ResultsMode = 2,
+            /// <summary>
+            /// /
+            /// </summary>
             AppendOutput = 4,
+            /// <summary>
+            /// 
+            /// </summary>
             ReplaceOutput=8,
+            /// <summary>
+            /// 
+            /// </summary>
             ExportAsBytes = 16
+                
+
         }
 
         public ProcessMode Mode = ProcessMode.ProcessingMode;
+
+        /// <summary>
+        /// charactors below this value are culled.
+        /// </summary>
+        public int CharLow = 0;
+        /// <summary>
+        /// chars about this value are culled.
+        /// </summary>
+        public int CharHigh = 255;
         
     }
+
+    
     class Program
     {
         
@@ -218,11 +246,55 @@ namespace TextLineFixer
                             case "OUT:UTF32":
                                 Config.Target = Encoding.UTF32;
                                 break;
+                            case "RANGE":
+                                if (step+1 >= args.Length)
+                                {
+                                    throw new ArgumentException(StaticMessages.RangeNotSpecifiedMsg);
+                                }
+                                else
+                                {
+                                    step++;
+                                    string first, second;
+                                    first = second = string.Empty;
+
+                                    int inner = 0;
+                                    for (; inner < args[step].Length;inner++) 
+                                    {
+                                        if (char.IsDigit(args[step][inner]))
+                                        {
+                                            first += args[step][inner];
+                                        }
+                                        else
+                                        {
+                                            if (args[step][inner] == '-')
+                                            {
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                throw new ArgumentException(string.Format(FormatMessages.ExpectedDigitsNotThis, args[step][inner]));
+                                            }
+                                        }
+                                    }
+
+                                    for (; inner < args[step].Length; inner++)
+                                    {
+                                        if (char.IsDigit(args[step][inner]))
+                                        {
+                                            second += args[step][inner];
+                                        }
+                                        else
+                                        {
+                                      
+                                        }
+                                    }
+                                }
+                                break;
                             case "OUT:LilEndianUnicode":
                             case "OUT:UNICODE":
                                 Config.Target = Encoding.Unicode;
                                 break;
-                              case "?":
+                             case "?":
                             case "HELP":
                                 // this triggers the usage file being displayed.
                                 throw new ArgumentNullException();
@@ -232,7 +304,7 @@ namespace TextLineFixer
                                 break;
                             default:
                                 {
-                                    throw new ArgumentException("Unknown argument: " + args[step]);
+                                    throw new ArgumentException(string.Format(FormatMessages.DefaultUnknownArgMessage, args[step]));
                                 }
                                 
                         }
@@ -259,7 +331,7 @@ namespace TextLineFixer
             catch (ArgumentException e)
             {
                 // in this case an exepction means invalid argument.
-                Console.WriteLine("Error: Unexpected or invalid arg. {0}", e.Message);
+                Console.WriteLine(FormatMessages.InvalidArgumentMessage, e.Message);
 
                 return;
             }
@@ -267,14 +339,14 @@ namespace TextLineFixer
 
             if (SourceLocation == null)
             {
-                Console.WriteLine("Error: No Source specified. Please specifiy a source using the -SOURCE command");
+                Console.WriteLine(StaticMessages.NoSourceSpecifiedMsg);
                 return;
             }
             else
             {
                 if (File.Exists(SourceLocation) == false)
                 {
-                    Console.WriteLine("Error: File {0} was not found.", SourceLocation);
+                    Console.WriteLine(FormatMessages.FileNotFoundMessage, SourceLocation);
                 }
                 else
                 {
@@ -284,19 +356,19 @@ namespace TextLineFixer
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        Console.WriteLine("Error: Current User does not have permission to open source file {0}", SourceLocation);
+                        Console.WriteLine(FormatMessages.SecurityMessage, SourceLocation);
                         return;
                     }
                     catch (IOException e)
                     {
-                        Console.WriteLine("IO Error happened. Message is {0}", e.Message);
+                        Console.WriteLine(FormatMessages.IoErrorMessage, e.Message);
                         return;
                     }
                 }
             }
             if (TargetLocation == null)
             {
-                Console.WriteLine("Error: No Target specified. Please specifiy a target using the -TARGET command");
+                Console.WriteLine(StaticMessages.NoTargetSpecifiedMsg);
                 return;
             }
             else
@@ -311,13 +383,13 @@ namespace TextLineFixer
                     {
                         if (OkToOverwrite == false)
                         {
-                            Console.WriteLine("Error: Target {0} already exists. Won't overwrite this without specifying the -FORCE command", TargetLocation);
+                            Console.WriteLine(string.Format(FormatMessages.OverrideRefusalMessage,TargetLocation, TargetLocation));
                             SourceStream.Close();
                             return;
                         }
                         else
                         {
-                            Console.WriteLine("Warning: Target {0} exists and 'FORCE' mode is specified. This will overwrite the target", TargetLocation);
+                            Console.WriteLine(string.Format(FormatMessages.OverrideAllowedMessage,TargetLocation), TargetLocation);
                         }
                     }
 
@@ -327,12 +399,12 @@ namespace TextLineFixer
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        Console.WriteLine("Error: Current User does not have permission to open target file {0}", SourceLocation);
+                        Console.WriteLine(string.Format(FormatMessages.SecurityMessage, SourceLocation));
                         return;
                     }
                     catch (IOException e)
                     {
-                        Console.WriteLine("IO Error happened. Message is {0}", e.Message);
+                        Console.WriteLine(string.Format(FormatMessages.IoErrorMessage, e.Message));
                         return;
                     }
                 }
